@@ -1,8 +1,8 @@
-from model import train_and_save_model, evaluate_model
 import numpy as np
-from prediction import load_and_predict
-from preprocessing import preprocess_train_data, preprocess_test_data
-from visualization import generate_plot_data
+from src.model import train_and_save_model, evaluate_model
+from src.prediction import load_and_predict
+from src.preprocessing import preprocess_train_data, preprocess_test_data
+from src.visualization import generate_plot_data
 
 
 X_train_scaled, y_train = preprocess_train_data('data/train/train.csv')

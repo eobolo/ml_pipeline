@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iris Prediction Pipeline</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <h1>Iris Prediction and Visualization Pipeline</h1>
+
+    <!-- Prediction Form -->
+    <section>
+        <h2>Predict Iris Species</h2>
+        <form id="predict-form">
+            <input type="number" step="0.1" name="sepal_length" placeholder="Sepal Length (cm)" required>
+            <input type="number" step="0.1" name="sepal_width" placeholder="Sepal Width (cm)" required>
+            <input type="number" step="0.1" name="petal_length" placeholder="Petal Length (cm)" required>
+            <input type="number" step="0.1" name="petal_width" placeholder="Petal Width (cm)" required>
+            <button type="submit">Predict</button>
+        </form>
+        <div id="prediction-result" class="result"></div>
+    </section>
+
+    <!-- Default Visualizations -->
+    <section>
+        <h2>Default Visualizations</h2>
+        <div class="plot-container">
+            <div class="plot-wrapper">
+                <div class="plot" id="scatter-plot"></div>
+                <div class="plot-title" id="scatter-plot-title"></div>
+                <div class="plot-description" id="scatter-description"></div>
+            </div>
+            <div class="plot-wrapper">
+                <div class="plot" id="box-plot"></div>
+                <div class="plot-title" id="box-plot-title"></div>
+                <div class="plot-description" id="box-description"></div>
+            </div>
+            <div class="plot-wrapper pairplot">
+                <div class="plot" id="pair-plot"></div>
+                <div class="plot-title" id="pair-plot-title"></div>
+                <div class="plot-description" id="pair-description"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Custom Visualization Form -->
+    <section>
+        <h2>Custom Visualization</h2>
+        <form id="visualization-form">
+            <select name="plot_type">
+                <option value="scatter">Scatter</option>
+                <option value="boxplot">Boxplot</option>
+                <option value="pairplot">Pairplot</option>
+            </select>
+            <input type="text" name="features" placeholder="Features (comma-separated, e.g., sepal length (cm),petal width (cm))">
+            <button type="submit">Generate</button>
+        </form>
+        <div id="custom-plots"></div>
+    </section>
+
+    <!-- Upload and Retrain -->
+    <section>
+        <h2>Upload New Data</h2>
+        <form id="upload-form" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".csv" required>
+            <button type="submit">Upload</button>
+        </form>
+        <div id="upload-result" class="result"></div>
+        <button id="retrain-button">Retrain Model</button>
+        <div id="retrain-result" class="result"></div>
+        <div id="retrain-choice" class="hidden">
+            <p>Old Model Accuracy: <span id="old-accuracy"></span></p>
+            <p>New Model Accuracy: <span id="new-accuracy"></span></p>
+            <button id="save-button">Save New Model</button>
+            <button id="discard-button">Discard New Model</button>
+        </div>
+    </section>
+
+    <!-- Evaluation -->
+    <section>
+        <h2>Evaluate Model</h2>
+        <button id="evaluate-button">Evaluate</button>
+        <pre id="evaluation-result" class="result"></pre>
+    </section>
+
+    <!-- Snackbar Container -->
+    <div id="snackbar"></div>
+
+    <script src="/static/js/scripts.js"></script>
+</body>
+</html>

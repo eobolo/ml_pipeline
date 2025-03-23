@@ -7,7 +7,7 @@ def generate_plot_data(data_path, plot_type='scatter', features=None, target_col
     Parameters:
     - data_path (str): Path to the CSV file containing the Iris dataset.
     - plot_type (str): Type of plot ('scatter', 'boxplot', 'pairplot') (default: 'scatter').
-    - features (list): Specific features to include (default: None, uses all except target).
+    - features (list): Specific features to include (default: None, uses all except target for pairplot).
     - target_col (str): Name of the target column (default: 'target').
     - expected_feature_names (list): Expected feature names for validation (default: standard Iris feature names).
 
@@ -33,12 +33,14 @@ def generate_plot_data(data_path, plot_type='scatter', features=None, target_col
             raise ValueError("Target column must contain only 0, 1, 2 for Iris classes.")
         data['species'] = data[target_col].map(class_names)
         
-        # Default to all features if none specified
-        if features is None:
-            features = expected_feature_names
+        # Handle features
+        if features is None or not features:
+            features = expected_feature_names if plot_type == 'pairplot' else None
+        else:
+            features = [f.strip() for f in features if f.strip()]
         
         # Validate features exist
-        if not all(f in expected_feature_names for f in features):
+        if features and not all(f in expected_feature_names for f in features):
             raise ValueError(f"All features must be in {expected_feature_names}")
 
         # Generate plot data based on plot_type
@@ -68,6 +70,9 @@ def generate_plot_data(data_path, plot_type='scatter', features=None, target_col
                 }
             }
         elif plot_type == 'pairplot':
+            # Ensure all features are included if none specified
+            if not features:
+                features = expected_feature_names
             plot_data = {
                 'type': 'pairplot',
                 'features': features,
