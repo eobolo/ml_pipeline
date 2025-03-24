@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+models/model_backup.keras
+data/uploaded/*
