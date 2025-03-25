@@ -4,59 +4,129 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Grade Prediction</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="/static/css/styles.css">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Student Grade Prediction</h1>
+        <div class="header">
+            <h1>Student Grade Prediction</h1>
+            <p class="subtitle">Analyze student performance and predict grades</p>
+        </div>
         
-        <h2>Upload Data</h2>
-        <form id="upload-form" enctype="multipart/form-data">
-            <label for="file-upload">Upload a CSV file:</label>
-            <input type="file" id="file-upload" accept=".csv">
-            <button type="button" id="upload-button">Upload</button>
-        </form>
-        <div id="upload-result"></div>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">📤</div>
+                <h2>Upload Data</h2>
+            </div>
+            <div class="card-content">
+                <form id="upload-form" enctype="multipart/form-data">
+                    <input type="file" id="file-upload" accept=".csv" class="file-input">
+                    <button type="button" id="upload-button" class="primary-button">Upload</button>
+                </form>
+                <div id="upload-result" class="result"></div>
+            </div>
+        </div>
 
-        <h2>Predict Grade</h2>
-        <form id="prediction-form">
-            <div id="features-container"></div>
-            <button type="button" id="predict-button">Predict</button>
-        </form>
-        <div id="prediction-result"></div>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">🎯</div>
+                <h2>Predict Grade</h2>
+            </div>
+            <div class="card-content">
+                <form id="prediction-form">
+                    <div id="features-container" class="features-grid"></div>
+                    <div class="button-group">
+                        <button type="button" id="predict-button" class="primary-button">Predict</button>
+                    </div>
+                </form>
+                <div id="prediction-result" class="result"></div>
+            </div>
+        </div>
         
-        <h2>Default Visualizations</h2>
-        <div id="default-visualizations"></div>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">📊</div>
+                <h2>Default Visualizations</h2>
+            </div>
+            <div class="card-content">
+                <div id="default-visualizations" class="visualizations-container"></div>
+            </div>
+        </div>
         
-        <h2>Custom Visualization</h2>
-        <form id="custom-visualization-form">
-            <label for="plot-type">Plot Type:</label>
-            <select id="plot-type">
-                <option value="scatter">Scatter Plot</option>
-                <option value="boxplot">Box Plot</option>
-                <option value="barplot">Bar Plot</option>
-                <option value="histogram">Histogram</option>
-                <option value="pairplot">Pair Plot</option>
-            </select>
-            <label for="features">Features (comma-separated, optional):</label>
-            <input type="text" id="features" placeholder="e.g., Weekly Study Hours, Output Grade">
-            <button type="button" id="generate-custom-plot">Generate Plot</button>
-        </form>
-        <div id="custom-visualization"></div>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">📈</div>
+                <h2>Custom Visualization</h2>
+            </div>
+            <div class="card-content">
+                <form id="custom-visualization-form" class="visualization-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="plot-type">Plot Type:</label>
+                            <select id="plot-type" class="form-control">
+                                <option value="scatter">Scatter Plot</option>
+                                <option value="boxplot">Box Plot</option>
+                                <option value="barplot">Bar Plot</option>
+                                <option value="histogram">Histogram</option>
+                                <option value="pairplot">Pair Plot</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="features">Features (comma-separated, optional):</label>
+                            <input type="text" id="features" class="form-control" placeholder="e.g., Weekly Study Hours, Output Grade">
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button type="button" id="generate-custom-plot" class="primary-button">Generate Plot</button>
+                    </div>
+                </form>
+                <div id="custom-visualization" class="visualization-result"></div>
+            </div>
+        </div>
 
-        <h2>Model Management</h2>
-        <button type="button" id="retrain-button">Retrain Model</button>
-        <button type="button" id="evaluate-button">Evaluate Model</button>
-        <div id="retrain-result"></div>
-        <div id="evaluation-result"></div>
-        <form id="save-retrain-form">
-            <label for="save-retrain">Save Retrained Model:</label>
-            <input type="checkbox" id="save-retrain">
-            <button type="button" id="save-retrain-button">Apply</button>
-        </form>
-        <div id="save-retrain-result"></div>
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">⚙️</div>
+                <h2>Model Management</h2>
+            </div>
+            <div class="card-content">
+                <div class="button-group">
+                    <button type="button" id="retrain-button" class="secondary-button">Retrain Model</button>
+                    <button type="button" id="evaluate-button" class="secondary-button">Evaluate Model</button>
+                </div>
+                <div id="retrain-result" class="result"></div>
+                <div id="evaluation-result" class="result"></div>
+                <div class="save-model-container">
+                    <div class="save-options">
+                        <label for="save-retrain" class="save-label">Save Retrained Model:</label>
+                        <label class="switch">
+                            <input type="checkbox" id="save-retrain">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <button type="button" id="save-retrain-button" class="primary-button">Apply</button>
+                </div>
+                <div id="save-retrain-result" class="result"></div>
+            </div>
+        </div>
     </div>
+    
+    <!-- Progress Overlay -->
+    <div id="progress-overlay" class="progress-overlay hidden">
+        <div class="progress-card">
+            <div class="spinner"></div>
+            <p class="progress-message" id="progress-message">Processing...</p>
+            <div class="progress-bar-container">
+                <div class="progress-bar"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Snackbar for notifications -->
+    <div id="snackbar"></div>
+    
     <script src="/static/js/scripts.js"></script>
 </body>
 </html>

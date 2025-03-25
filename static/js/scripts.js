@@ -1,3 +1,4 @@
+
 document.addEventListener("DOMContentLoaded", () => {
     const featuresContainer = document.getElementById("features-container");
     const predictButton = document.getElementById("predict-button");
@@ -14,6 +15,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const evaluationResult = document.getElementById("evaluation-result");
     const saveRetrainResult = document.getElementById("save-retrain-result");
 
+    // Add a snackbar element for notifications
+    if (!document.getElementById("snackbar")) {
+        const snackbar = document.createElement("div");
+        snackbar.id = "snackbar";
+        document.body.appendChild(snackbar);
+    }
+
     // Grade mapping for colors and markers
     const gradeMap = {
         'Fail': { color: '#E41A1C', marker: 'circle' },
@@ -26,9 +34,67 @@ document.addEventListener("DOMContentLoaded", () => {
         'AA': { color: '#999999', marker: 'hexagon' }
     };
 
+    // Show a notification
+    function showNotification(message, isSuccess = true) {
+        const snackbar = document.getElementById("snackbar");
+        snackbar.textContent = message;
+        snackbar.className = isSuccess ? "show success" : "show error";
+        setTimeout(() => {
+            snackbar.className = snackbar.className.replace("show", "");
+        }, 3000);
+    }
+
+    // Show loading overlay
+    function showLoading(message = "Processing...") {
+        // Create overlay if it doesn't exist
+        if (!document.getElementById("progress-overlay")) {
+            const overlay = document.createElement("div");
+            overlay.id = "progress-overlay";
+            overlay.className = "progress-overlay";
+            
+            const card = document.createElement("div");
+            card.className = "progress-card";
+            
+            const spinner = document.createElement("div");
+            spinner.className = "spinner";
+            
+            const messageEl = document.createElement("p");
+            messageEl.className = "progress-message";
+            messageEl.id = "progress-message";
+            messageEl.textContent = message;
+            
+            const barContainer = document.createElement("div");
+            barContainer.className = "progress-bar-container";
+            
+            const bar = document.createElement("div");
+            bar.className = "progress-bar";
+            
+            barContainer.appendChild(bar);
+            card.appendChild(spinner);
+            card.appendChild(messageEl);
+            card.appendChild(barContainer);
+            overlay.appendChild(card);
+            document.body.appendChild(overlay);
+        } else {
+            // Update message if overlay exists
+            document.getElementById("progress-message").textContent = message;
+            document.getElementById("progress-overlay").classList.remove("hidden");
+        }
+    }
+
+    // Hide loading overlay
+    function hideLoading() {
+        const overlay = document.getElementById("progress-overlay");
+        if (overlay) {
+            overlay.classList.add("hidden");
+        }
+    }
+
     // Function to fetch and populate features
     function loadFeatures() {
         featuresContainer.innerHTML = ""; // Clear existing features
+        showLoading("Loading features...");
+        
         fetch("/api/features")
             .then(response => {
                 if (!response.ok) {
@@ -39,7 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(data => {
                 data.features.forEach(feature => {
                     const featureGroup = document.createElement("div");
-                    featureGroup.className = "feature-group";
+                    featureGroup.className = "form-group";
 
                     const label = document.createElement("label");
                     label.textContent = feature.feature;
@@ -48,6 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const select = document.createElement("select");
                     select.id = feature.feature.replace(/\s+/g, "-").toLowerCase();
                     select.name = feature.feature;
+                    select.className = "form-control";
 
                     feature.options.forEach(option => {
                         const optionElement = document.createElement("option");
@@ -60,52 +127,129 @@ document.addEventListener("DOMContentLoaded", () => {
                     featureGroup.appendChild(select);
                     featuresContainer.appendChild(featureGroup);
                 });
+                hideLoading();
             })
             .catch(error => {
                 console.error("Error fetching features:", error);
-                featuresContainer.innerHTML = "<p>Error loading features. Please try again later.</p>";
+                featuresContainer.innerHTML = "<p class='error'>Error loading features. Please try again later.</p>";
+                showNotification("Failed to load features.", false);
+                hideLoading();
             });
     }
 
     // Function to fetch and render default visualizations
     function loadDefaultVisualizations() {
         defaultVisualizations.innerHTML = ""; // Clear existing visualizations
+        showLoading("Loading visualizations...");
+        
         fetch("/api/visualizations/default")
             .then(response => {
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 return response.json();
             })
             .then(visualizations => {
-                // console.log("Default visualizations data:", visualizations);
                 visualizations.forEach((vis, index) => {
+                    const visItem = document.createElement("div");
+                    visItem.className = "visualization-item";
+                    
                     const title = document.createElement("h3");
                     title.textContent = vis.title;
-                    defaultVisualizations.appendChild(title);
-
-                    const plotDiv = document.createElement("div");
-                    plotDiv.id = `default-plot-${index}`;
-                    defaultVisualizations.appendChild(plotDiv);
-                    // console.log(`Rendering plot ${index}:`, vis.plot_data);
-                    renderPlot(vis.plot_data, plotDiv.id);
-
+                    visItem.appendChild(title);
+                    
+                    const plotContainer = document.createElement("div");
+                    plotContainer.className = "plot-container";
+                    plotContainer.id = `default-plot-${index}`;
+                    visItem.appendChild(plotContainer);
+                    
                     const interpretation = document.createElement("p");
                     interpretation.textContent = vis.interpretation;
-                    defaultVisualizations.appendChild(interpretation);
+                    visItem.appendChild(interpretation);
+                    
+                    defaultVisualizations.appendChild(visItem);
                 });
+                
+                // Add a small delay to ensure the DOM is updated
+                setTimeout(() => {
+                    visualizations.forEach((vis, index) => {
+                        renderPlot(vis.plot_data, `default-plot-${index}`);
+                    });
+                    hideLoading();
+                }, 100);
             })
             .catch(error => {
                 console.error("Error fetching default visualizations:", error);
-                defaultVisualizations.innerHTML = "<p>Error loading default visualizations.</p>";
+                defaultVisualizations.innerHTML = "<p class='error'>Error loading default visualizations.</p>";
+                showNotification("Failed to load visualizations.", false);
+                hideLoading();
             });
+    }
+
+    // Update upload form UI
+    function enhanceUploadForm() {
+        const uploadForm = document.getElementById("upload-form");
+        const fileInput = document.getElementById("file-upload");
+        
+        // Hide the original file input
+        fileInput.style.display = "none";
+        
+        // Create a nicer upload area
+        const uploadArea = document.createElement("div");
+        uploadArea.className = "upload-area";
+        uploadArea.innerHTML = `
+            <div class="upload-icon">📤</div>
+            <p class="upload-text">Drag & drop your CSV file here or <span class="browse-text">browse</span></p>
+        `;
+        
+        uploadArea.addEventListener("click", () => {
+            fileInput.click();
+        });
+        
+        // Add drag and drop functionality
+        uploadArea.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = "#3498db";
+            uploadArea.style.background = "#e6f7ff";
+        });
+        
+        uploadArea.addEventListener("dragleave", () => {
+            uploadArea.style.borderColor = "#cbd5e0";
+            uploadArea.style.background = "#f9fafc";
+        });
+        
+        uploadArea.addEventListener("drop", (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = "#cbd5e0";
+            uploadArea.style.background = "#f9fafc";
+            
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                const fileName = e.dataTransfer.files[0].name;
+                uploadArea.querySelector(".upload-text").textContent = `Selected: ${fileName}`;
+            }
+        });
+        
+        // Update text when file is selected
+        fileInput.addEventListener("change", () => {
+            if (fileInput.files.length) {
+                const fileName = fileInput.files[0].name;
+                uploadArea.querySelector(".upload-text").textContent = `Selected: ${fileName}`;
+            }
+        });
+        
+        // Insert the new upload area before the upload button
+        uploadForm.insertBefore(uploadArea, uploadButton);
     }
 
     // Initial load
     loadFeatures();
     loadDefaultVisualizations();
+    enhanceUploadForm();
 
     // Handle prediction
     predictButton.addEventListener("click", () => {
         const features = Array.from(document.querySelectorAll("#features-container select")).map(select => parseInt(select.value));
+        showLoading("Predicting grade...");
+        
         fetch("/api/predict", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -118,11 +262,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 return response.json();
             })
             .then(data => {
-                predictionResult.textContent = `Predicted Grade: ${data.prediction} (${data.meaning})`;
+                predictionResult.innerHTML = `
+                    <div class="prediction-result">
+                        Predicted Grade: <strong>${data.prediction}</strong>
+                        <div>${data.meaning}</div>
+                    </div>
+                `;
+                hideLoading();
+                showNotification("Prediction completed successfully!");
             })
             .catch(error => {
                 console.error("Error making prediction:", error);
-                predictionResult.textContent = "Error making prediction. Please try again.";
+                predictionResult.innerHTML = "<p class='error'>Error making prediction. Please try again.</p>";
+                hideLoading();
+                showNotification("Error making prediction.", false);
             });
     });
 
@@ -131,10 +284,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const fileInput = document.getElementById("file-upload");
         const file = fileInput.files[0];
         if (!file) {
-            uploadResult.textContent = "Please select a file.";
+            showNotification("Please select a file.", false);
             return;
         }
 
+        showLoading("Uploading file...");
         const formData = new FormData();
         formData.append("file", file);
 
@@ -147,15 +301,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 return response.json();
             })
             .then(data => {
-                uploadResult.textContent = data.message;
+                uploadResult.innerHTML = `<p>${data.message}</p>`;
                 // Refresh features and visualizations after upload
                 loadFeatures();
-                loadDefaultVisualizations();
+                setTimeout(() => loadDefaultVisualizations(), 500);
                 customVisualization.innerHTML = ""; // Clear custom visualization
+                hideLoading();
+                showNotification("File uploaded successfully!");
             })
             .catch(error => {
                 console.error("Error uploading file:", error);
-                uploadResult.textContent = `Error: ${error.message}`;
+                uploadResult.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+                hideLoading();
+                showNotification("Error uploading file.", false);
             });
     });
 
@@ -166,19 +324,20 @@ document.addEventListener("DOMContentLoaded", () => {
         const features = featuresInput ? featuresInput.split(",").map(f => f.trim()) : [];
 
         if (!plotType) {
-            customVisualization.innerHTML = "<p>Please select a plot type.</p>";
+            showNotification("Please select a plot type.", false);
             return;
         }
 
         if (plotType === "scatter" && features.length !== 2) {
-            customVisualization.innerHTML = "<p>Scatter plot requires exactly 2 features.</p>";
+            showNotification("Scatter plot requires exactly 2 features.", false);
             return;
         }
         if (plotType === "pairplot" && features.length !== 2) {
-            customVisualization.innerHTML = "<p>Pairplot requires exactly 2 features.</p>";
+            showNotification("Pairplot requires exactly 2 features.", false);
             return;
         }
 
+        showLoading("Generating visualization...");
         fetch("/api/visualizations/custom", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -190,76 +349,265 @@ document.addEventListener("DOMContentLoaded", () => {
             })
             .then(data => {
                 customVisualization.innerHTML = "";
-                const plotDiv = document.createElement("div");
-                plotDiv.id = "custom-plot";
-                customVisualization.appendChild(plotDiv);
-                renderPlot(data.plot_data, plotDiv.id);
+                const plotContainer = document.createElement("div");
+                plotContainer.className = "plot-container";
+                plotContainer.id = "custom-plot";
+                customVisualization.appendChild(plotContainer);
+                
+                // Ensure the container is in the DOM before rendering
+                setTimeout(() => {
+                    renderPlot(data.plot_data, plotContainer.id);
+                    hideLoading();
+                    showNotification("Visualization generated successfully!");
+                }, 100);
             })
             .catch(error => {
                 console.error("Error generating custom visualization:", error);
-                customVisualization.innerHTML = "<p>Error generating visualization. Check your inputs.</p>";
+                customVisualization.innerHTML = "<p class='error'>Error generating visualization. Check your inputs.</p>";
+                hideLoading();
+                showNotification("Error generating visualization.", false);
             });
     });
 
     // Handle retrain
     retrainButton.addEventListener("click", () => {
+        showLoading("Retraining model...");
         retrainResult.innerHTML = "<p>Retraining model...</p>";
-        fetch("/api/retrain", { method: "POST" })
-            .then(response => response.json())
+        
+        fetch("/api/retrain", { 
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}) // Send empty JSON object instead of undefined
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
-                retrainResult.innerHTML = `
-                <p>${data.message}</p>
-                <p>Old Metrics: ${JSON.stringify(data.old_metrics || 'N/A')}</p>
-                <p>New Metrics: ${JSON.stringify(data.new_metrics)}</p>
-            `;
+                // Create model comparison cards
+                const comparison = document.createElement("div");
+                comparison.className = "model-comparison";
+                
+                // Old model card
+                const oldCard = document.createElement("div");
+                oldCard.className = "model-card";
+                oldCard.innerHTML = `
+                    <div class="model-title">Original Model</div>
+                    <div class="model-metrics">${formatMetrics(data.old_metrics || {})}</div>
+                `;
+                
+                // New model card
+                const newCard = document.createElement("div");
+                newCard.className = "model-card";
+                newCard.innerHTML = `
+                    <div class="model-title">Retrained Model</div>
+                    <div class="model-metrics">${formatMetrics(data.new_metrics || {})}</div>
+                `;
+                
+                comparison.appendChild(oldCard);
+                comparison.appendChild(newCard);
+                
+                retrainResult.innerHTML = `<p>${data.message}</p>`;
+                retrainResult.appendChild(comparison);
+                
+                hideLoading();
+                showNotification("Model retrained successfully!");
             })
             .catch(error => {
-                retrainResult.innerHTML = `<p>Error retraining model: ${error.message}</p>`;
+                retrainResult.innerHTML = `<p class='error'>Error retraining model: ${error.message}</p>`;
+                hideLoading();
+                showNotification("Error retraining model.", false);
             });
     });
 
     // Handle evaluate
     evaluateButton.addEventListener("click", () => {
+        showLoading("Evaluating model...");
         evaluationResult.innerHTML = "<p>Evaluating model...</p>";
+        
         fetch("/api/evaluate")
-            .then(response => response.json())
-            .then(data => {
-                evaluationResult.innerHTML = `
-                <p>Metrics: ${JSON.stringify(data.metrics)}</p>
-            `;
-                if (data.confusion_matrix) {
-                    const plotDiv = document.createElement("div");
-                    plotDiv.id = "confusion-matrix-plot";
-                    evaluationResult.appendChild(plotDiv);
-                    renderPlot(data.confusion_matrix, plotDiv.id);
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
                 }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Evaluation data:", data); // Debug log
+                
+                // Format metrics properly
+                const formattedMetrics = formatMetrics(data.metrics || {});
+                
+                // If there's a classification report, format it
+                let reportHTML = '';
+                if (data.metrics && data.metrics.classification_report) {
+                    reportHTML = formatClassificationReport(data.metrics.classification_report);
+                }
+                
+                evaluationResult.innerHTML = `
+                    <div class="model-card">
+                        <div class="model-title">Current Model Metrics</div>
+                        <div class="model-metrics">${formattedMetrics}</div>
+                        ${reportHTML}
+                    </div>
+                `;
+                
+                if (data.confusion_matrix) {
+                    const plotContainer = document.createElement("div");
+                    plotContainer.className = "plot-container";
+                    plotContainer.id = "confusion-matrix-plot";
+                    evaluationResult.appendChild(plotContainer);
+                    
+                    // Ensure the container is in the DOM before rendering
+                    setTimeout(() => {
+                        renderPlot(data.confusion_matrix, plotContainer.id);
+                    }, 100);
+                }
+                
+                hideLoading();
+                showNotification("Model evaluated successfully!");
             })
             .catch(error => {
-                evaluationResult.innerHTML = `<p>Error evaluating model: ${error.message}</p>`;
+                console.error("Error evaluating model:", error);
+                evaluationResult.innerHTML = `<p class='error'>Error evaluating model: ${error.message}</p>`;
+                hideLoading();
+                showNotification("Error evaluating model.", false);
             });
     });
 
     // Handle save retrain
     saveRetrainButton.addEventListener("click", () => {
         const save = document.getElementById("save-retrain").checked;
+        showLoading("Saving model settings...");
+        
         fetch("/api/save_retrain", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(save)
         })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 saveRetrainResult.innerHTML = `<p>${data.message}</p>`;
+                hideLoading();
+                showNotification(data.message);
             })
             .catch(error => {
-                saveRetrainResult.innerHTML = `<p>Error saving retrain decision: ${error.message}</p>`;
+                saveRetrainResult.innerHTML = `<p class='error'>Error saving retrain decision: ${error.message}</p>`;
+                hideLoading();
+                showNotification("Error saving settings.", false);
             });
     });
+
+    // Function to format metrics for display
+    function formatMetrics(metrics) {
+        if (!metrics || Object.keys(metrics).length === 0) {
+            return "<p>No metrics available</p>";
+        }
+        
+        let html = "<ul style='list-style: none; padding: 0;'>";
+        
+        Object.entries(metrics).forEach(([key, value]) => {
+            // Skip the classification_report object, we'll handle it separately
+            if (key === 'classification_report') return;
+            
+            // Format the key for display
+            const formattedKey = key
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, l => l.toUpperCase());
+            
+            // Format the value based on its type
+            let formattedValue = value;
+            if (typeof value === 'number') {
+                formattedValue = value.toFixed(4);
+            } else if (value === undefined || value === null) {
+                formattedValue = 'N/A';
+            }
+            
+            html += `<li><strong>${formattedKey}:</strong> ${formattedValue}</li>`;
+        });
+        
+        html += "</ul>";
+        return html;
+    }
+
+    // Function to format the classification report
+    function formatClassificationReport(report) {
+        if (!report || typeof report !== 'object') {
+            return '';
+        }
+        
+        let html = `
+            <div class="classification-report">
+                <h4>Classification Report</h4>
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>Class</th>
+                            <th>Precision</th>
+                            <th>Recall</th>
+                            <th>F1-Score</th>
+                            <th>Support</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        Object.entries(report).forEach(([className, metrics]) => {
+            // Skip non-class entries or invalid metrics
+            console.log(metrics, className);
+            if (className === 'accuracy' || !metrics || typeof metrics !== 'object') return;
+        
+            // Helper function to format metric values
+            const formatMetric = (value, isFloat = true) => {
+                if (value === undefined || value === null) return 'N/A';
+                return isFloat ? value.toFixed(4) : value;
+            };
+        
+            // Extract and format metrics
+            const precision = formatMetric(metrics.precision);
+            const recall = formatMetric(metrics.recall);
+            const f1Score = formatMetric(metrics['f1-score']);
+            const support = formatMetric(metrics.support, false); // Support is an integer
+        
+            html += `
+                <tr>
+                    <td>${className}</td>
+                    <td>${precision}</td>
+                    <td>${recall}</td>
+                    <td>${f1Score}</td>
+                    <td>${support}</td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        return html;
+    }
+
     // Function to render Plotly plots dynamically
     function renderPlot(plotData, plotId) {
+        // Ensure the container exists
+        const container = document.getElementById(plotId);
+        if (!container) {
+            console.error(`No DOM element with id '${plotId}' exists on the page.`);
+            return;
+        }
+
         if (!plotData || !plotData.type) {
             console.error("Invalid plotData:", plotData);
-            document.getElementById(plotId).innerHTML = "<p>Error: Invalid plot data.</p>";
+            container.innerHTML = "<p>Error: Invalid plot data.</p>";
             return;
         }
 
@@ -269,7 +617,7 @@ document.addEventListener("DOMContentLoaded", () => {
             margin: { t: 50, b: 50, l: 70, r: 50 },
             paper_bgcolor: 'rgba(0,0,0,0)',
             plot_bgcolor: 'rgba(0,0,0,0)',
-            font: { family: 'Arial, sans-serif' },
+            font: { family: 'Inter, sans-serif' },
             legend: {
                 x: 1,
                 y: 1,
@@ -281,9 +629,8 @@ document.addEventListener("DOMContentLoaded", () => {
             },
             annotations: []
         };
+        
         if (plotData.type === "confusion_matrix") {
-            console.log("Confusion Matrix Data:", plotData); // Debug log
-
             const trace = {
                 z: plotData.confusion_matrix,
                 x: plotData.labels,

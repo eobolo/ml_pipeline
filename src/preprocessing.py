@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedShuffleSplit
-from imblearn.over_sampling import ADASYN
+from imblearn.over_sampling import SMOTE  # Changed from ADASYN to SMOTE
 import joblib
 import numpy as np
 from tensorflow.keras.utils import to_categorical
@@ -20,7 +20,7 @@ num_classes = 8
 columns_to_drop = ['STUDENTID', 'EXP_GPA']
 
 def preprocess_train_data(train_path, scaler_path='models/scaler.pkl', save_dir='models', val_size=0.2):
-    """Preprocess training data: apply ADASYN, split into train/val with stratification, fit scaler, and save it."""
+    """Preprocess training data: apply SMOTE, split into train/val with stratification, fit scaler, and save it."""
     try:
         # Load training data
         train_data = pd.read_csv(train_path)
@@ -39,18 +39,18 @@ def preprocess_train_data(train_path, scaler_path='models/scaler.pkl', save_dir=
         if not set(y).issubset(set(range(num_classes))):
             raise ValueError(f"Target must contain only integers from 0 to {num_classes-1}")
 
-        # Check for class imbalance and apply ADASYN
+        # Check for class imbalance and apply SMOTE
         class_counts = y.value_counts()
         min_class_size = class_counts.min()
         max_class_size = class_counts.max()
         imbalance_ratio = min_class_size / max_class_size
         if imbalance_ratio < 0.5:
-            print("Class imbalance detected. Applying ADASYN with dynamic sizing.")
+            print("Class imbalance detected. Applying SMOTE with dynamic sizing.")
             target_samples_per_class = max(max_class_size, int(len(y) / num_classes)) + 500
             strategy = {grade: target_samples_per_class for grade in range(num_classes)}
-            adasyn = ADASYN(sampling_strategy=strategy, random_state=42)
-            X, y = adasyn.fit_resample(X, y)
-            print(f"After ADASYN: {len(y)} samples, class distribution: {pd.Series(y).value_counts().to_dict()}")
+            smote = SMOTE(sampling_strategy=strategy, random_state=42)
+            X, y = smote.fit_resample(X, y)
+            print(f"After SMOTE: {len(y)} samples, class distribution: {pd.Series(y).value_counts().to_dict()}")
         else:
             print("No significant class imbalance. Skipping oversampling.")
 
