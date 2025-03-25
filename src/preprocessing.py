@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedShuffleSplit
-from imblearn.over_sampling import SMOTE  # Changed from ADASYN to SMOTE
+from imblearn.over_sampling import SMOTE
 import joblib
 import numpy as np
 from tensorflow.keras.utils import to_categorical
@@ -122,15 +122,23 @@ def preprocess_test_data(test_path, scaler_path='models/scaler.pkl'):
         raise Exception(f"Error in preprocessing test data: {e}")
 
 def merge_and_split_data(new_data_path, train_path='data/train/train.csv', test_path='data/test/test.csv', test_size=0.2, random_state=42):
-    """Merge new data with existing data and append to train/test with stratification."""
+    """Merge new data with existing data and append to train/test with stratification, or split new data if no existing data."""
     try:
         expected_columns = all_feature_names + [target_col]
-        new_data = pd.read_csv(new_data_path)
+        
+        # Load and validate new data
+        try:
+            new_data = pd.read_csv(new_data_path)
+        except pd.errors.EmptyDataError:
+            raise ValueError("Uploaded CSV file is empty or has no parseable data")
+        
         if list(new_data.columns) != expected_columns:
             raise ValueError(f"Uploaded data must have columns: {expected_columns}")
         if new_data.isnull().any().any():
             raise ValueError("Uploaded data contains missing values")
-        
+        if new_data.empty:
+            raise ValueError("Uploaded data contains no rows")
+
         # Split new data with stratification
         X_new = new_data.drop(columns=[target_col])
         y_new = new_data[target_col]
@@ -139,19 +147,38 @@ def merge_and_split_data(new_data_path, train_path='data/train/train.csv', test_
             X_new_train, X_new_test = X_new.iloc[train_idx], X_new.iloc[test_idx]
             y_new_train, y_new_test = y_new.iloc[train_idx], y_new.iloc[test_idx]
         
-        # Load existing data or initialize empty
-        train_data = pd.read_csv(train_path) if os.path.exists(train_path) else pd.DataFrame(columns=expected_columns)
-        test_data = pd.read_csv(test_path) if os.path.exists(test_path) else pd.DataFrame(columns=expected_columns)
+        # Load existing data, handling cases where files don't exist or are empty
+        try:
+            train_data = pd.read_csv(train_path)
+            if train_data.empty:
+                train_data = pd.DataFrame(columns=expected_columns)
+        except (FileNotFoundError, pd.errors.EmptyDataError):
+            train_data = pd.DataFrame(columns=expected_columns)
         
-        # Append new splits to existing data
+        try:
+            test_data = pd.read_csv(test_path)
+            if test_data.empty:
+                test_data = pd.DataFrame(columns=expected_columns)
+        except (FileNotFoundError, pd.errors.EmptyDataError):
+            test_data = pd.DataFrame(columns=expected_columns)
+        
+        # Append new splits to existing data if existing data is non-empty, otherwise use new data directly
         new_train_df = pd.concat([X_new_train, y_new_train], axis=1)
         new_test_df = pd.concat([X_new_test, y_new_test], axis=1)
-        combined_train = pd.concat([train_data, new_train_df], ignore_index=True)
-        combined_test = pd.concat([test_data, new_test_df], ignore_index=True)
+        
+        if not train_data.empty or not test_data.empty:
+            combined_train = pd.concat([train_data, new_train_df], ignore_index=True)
+            combined_test = pd.concat([test_data, new_test_df], ignore_index=True)
+        else:
+            combined_train = new_train_df
+            combined_test = new_test_df
         
         # Save updated datasets with all columns
+        os.makedirs(os.path.dirname(train_path), exist_ok=True)
+        os.makedirs(os.path.dirname(test_path), exist_ok=True)
         combined_train.to_csv(train_path, index=False)
         combined_test.to_csv(test_path, index=False)
+        
         return train_path, test_path
     except Exception as e:
         raise Exception(f"Error merging data: {e}")
