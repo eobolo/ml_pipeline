@@ -1,19 +1,28 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from src.api.routes import router, setup_routes
+from src.api.routes import router
+import uvicorn
 import os
 
-app = FastAPI()
+app = FastAPI(title="Student Grade Prediction API")
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Set up templates
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="template")
 
-# Include API routes with templates
-setup_routes(app, templates)
+# Include the API router
+app.include_router(router, prefix="/api")
 
-# Ensure upload directory exists
+# Serve the HTML page
+@app.get("/", include_in_schema=False)
+def index(request: Request):
+    return templates.TemplateResponse("pipeline.html", {"request": request})
+
+# Ensure upload directory exists (optional for now)
 os.makedirs("data/uploaded", exist_ok=True)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

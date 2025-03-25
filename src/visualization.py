@@ -1,91 +1,174 @@
 import pandas as pd
+import numpy as np
+from sklearn.metrics import confusion_matrix
+import joblib
 
-def generate_plot_data(data_path, plot_type='scatter', features=None, target_col='target', expected_feature_names=['sepal length (cm)', 'sepal width (cm)', 'petal length (cm)', 'petal width (cm)']):
-    """
-    Generate JSON-compatible data for interactive plots of the Iris dataset.
+# Define the full set of original columns
+all_columns_names = [
+    'STUDENTID', 'AGE', 'GENDER', 'HS_TYPE', 'SCHOLARSHIP', 'WORK', 'ACTIVITY', 'PARTNER', 
+    'SALARY', 'TRANSPORT', 'LIVING', 'MOTHER_EDU', 'FATHER_EDU', '#_SIBLINGS', 
+    'KIDS', 'MOTHER_JOB', 'FATHER_JOB', 'STUDY_HRS', 'READ_FREQ', 'READ_FREQ_SCI', 
+    'ATTEND_DEPT', 'IMPACT', 'ATTEND', 'PREP_STUDY', 'PREP_EXAM', 'NOTES', 
+    'LISTENS', 'LIKES_DISCUSS', 'CLASSROOM', 'CUML_GPA', 'EXP_GPA', 'COURSE ID', 'GRADE'
+]
+target_col = 'GRADE'
 
-    Parameters:
-    - data_path (str): Path to the CSV file containing the Iris dataset.
-    - plot_type (str): Type of plot ('scatter', 'boxplot', 'pairplot') (default: 'scatter').
-    - features (list): Specific features to include (default: None, uses all except target for pairplot).
-    - target_col (str): Name of the target column (default: 'target').
-    - expected_feature_names (list): Expected feature names for validation (default: standard Iris feature names).
+# Mapping of technical column names to user-friendly English names
+categorical_name_mapping = {
+    'AGE': 'Student Age',
+    'GENDER': 'Gender',
+    'HS_TYPE': 'High School Type',
+    'SCHOLARSHIP': 'Scholarship Type',
+    'WORK': 'Additional Work',
+    'ACTIVITY': 'Artistic/Sports Activity',
+    'PARTNER': 'Has Partner',
+    'SALARY': 'Total Salary',
+    'TRANSPORT': 'Transportation Method',
+    'LIVING': 'Accommodation Type',
+    'MOTHER_EDU': "Mother's Education",
+    'FATHER_EDU': "Father's Education",
+    '#_SIBLINGS': 'Number of Siblings',
+    'KIDS': 'Parental Status',
+    'MOTHER_JOB': "Mother's Occupation",
+    'FATHER_JOB': "Father's Occupation",
+    'STUDY_HRS': 'Weekly Study Hours',
+    'READ_FREQ': 'Reading Frequency (Non-Scientific)',
+    'READ_FREQ_SCI': 'Reading Frequency (Scientific)',
+    'ATTEND_DEPT': 'Seminar/Conference Attendance',
+    'IMPACT': 'Project Impact',
+    'ATTEND': 'Class Attendance',
+    'PREP_STUDY': 'Midterm Exam 1 Preparation',
+    'PREP_EXAM': 'Midterm Exam 2 Preparation',
+    'NOTES': 'Taking Notes in Classes',
+    'LISTENS': 'Listening in Classes',
+    'LIKES_DISCUSS': 'Discussion Impact',
+    'CLASSROOM': 'Flip-Classroom Preference',
+    'CUML_GPA': 'Cumulative GPA',
+    'EXP_GPA': 'Expected Graduation GPA',
+    'COURSE ID': 'Course Identifier',
+    'GRADE': 'Output Grade'
+}
 
-    Returns:
-    - dict: JSON-compatible data structure for the specified plot type.
+# Reverse mapping for user input to technical names
+reverse_mapping = {v: k for k, v in categorical_name_mapping.items()}
 
-    Raises:
-    - ValueError: If feature names, target values, or feature count for plot type are invalid.
-    - FileNotFoundError: If the data file is not found.
-    """
+def get_available_features():
+    """Return a list of user-friendly feature names for the API."""
+    return [categorical_name_mapping[col] for col in all_columns_names if col != 'STUDENTID']
+
+def generate_plot_data(data_path, plot_type='scatter', features=None):
+    """Generate JSON-compatible data for interactive plots of the student dataset."""
     try:
-        # Load data
         data = pd.read_csv(data_path)
-        
-        # Enforce feature names
-        expected_columns = expected_feature_names + [target_col]
+        expected_columns = all_columns_names
         if list(data.columns) != expected_columns:
             raise ValueError(f"Input data must have columns: {expected_columns}")
-        
-        # Map target to class names for plotting
-        class_names = {0: 'setosa', 1: 'versicolor', 2: 'virginica'}
-        if not set(data[target_col]).issubset({0, 1, 2}):
-            raise ValueError("Target column must contain only 0, 1, 2 for Iris classes.")
-        data['species'] = data[target_col].map(class_names)
-        
-        # Handle features
+
+        data = data.drop(columns=['STUDENTID'])
+        grade_names = {0: 'Fail', 1: 'DD', 2: 'DC', 3: 'CC', 4: 'CB', 5: 'BB', 6: 'BA', 7: 'AA'}
+        if not set(data[target_col]).issubset(set(range(8))):
+            raise ValueError("Target column must contain integers 0-7 for grade classes.")
+        data['grade_label'] = data[target_col].map(grade_names)
+
+        available_features = [col for col in all_columns_names if col != 'STUDENTID']
         if features is None or not features:
-            features = expected_feature_names if plot_type == 'pairplot' else None
+            features = [categorical_name_mapping[col] for col in available_features]
         else:
             features = [f.strip() for f in features if f.strip()]
-        
-        # Validate features exist
-        if features and not all(f in expected_feature_names for f in features):
-            raise ValueError(f"All features must be in {expected_feature_names}")
+            technical_features = [reverse_mapping.get(f) for f in features]
+            if None in technical_features or not all(f in available_features for f in technical_features):
+                raise ValueError(f"Features must be in {get_available_features()}")
 
-        # Generate plot data based on plot_type
         if plot_type == 'scatter':
-            if len(features) != 2:
-                raise ValueError("Scatter plot requires exactly 2 features.")
+            if len(features) < 2:
+                raise ValueError("Scatter plot requires at least 2 features.")
             plot_data = {
                 'type': 'scatter',
-                'x': data[features[0]].tolist(),
-                'y': data[features[1]].tolist(),
-                'color': data['species'].tolist(),
+                'features': features[:2],  # Use only first 2 features
+                'x': data[reverse_mapping[features[0]]].tolist(),
+                'y': data[reverse_mapping[features[1]]].tolist(),
+                'color': data['grade_label'].tolist(),
                 'x_label': features[0],
                 'y_label': features[1]
             }
         elif plot_type == 'boxplot':
-            if not features:
-                raise ValueError("Boxplot requires at least one feature.")
+            if len(features) < 1:
+                raise ValueError("Boxplot requires at least 1 feature.")
             plot_data = {
                 'type': 'boxplot',
                 'features': features,
                 'data': {
                     feature: {
-                        class_name: data[data['species'] == class_name][feature].tolist()
-                        for class_name in class_names.values()
+                        grade: data[data['grade_label'] == grade][reverse_mapping[feature]].tolist()
+                        for grade in grade_names.values()
+                    }
+                    for feature in features
+                }
+            }
+        elif plot_type == 'barplot':
+            if len(features) < 1:
+                raise ValueError("Barplot requires at least 1 feature.")
+            plot_data = {
+                'type': 'barplot',
+                'features': features,
+                'data': {
+                    feature: {
+                        grade: data[data['grade_label'] == grade][reverse_mapping[feature]].mean()
+                        for grade in grade_names.values()
+                    }
+                    for feature in features
+                }
+            }
+        elif plot_type == 'histogram':
+            if len(features) < 1:
+                raise ValueError("Histogram requires at least 1 feature.")
+            plot_data = {
+                'type': 'histogram',
+                'features': features,
+                'data': {
+                    feature: {
+                        'values': data[reverse_mapping[feature]].tolist(),
+                        'bins': 10
                     }
                     for feature in features
                 }
             }
         elif plot_type == 'pairplot':
-            # Ensure all features are included if none specified
-            if not features:
-                features = expected_feature_names
+            if len(features) < 2:
+                raise ValueError("Pairplot requires exactly 2 features.")
+            features = features[:2]  # Enforce only the first 2 features
             plot_data = {
                 'type': 'pairplot',
                 'features': features,
-                'data': data[features + ['species']].to_dict(orient='records')
+                'data': data[[reverse_mapping[f] for f in features] + ['grade_label']].to_dict(orient='records')
             }
         else:
-            raise ValueError(f"Unsupported plot_type '{plot_type}'. Use 'scatter', 'boxplot', or 'pairplot'.")
-
+            raise ValueError(f"Unsupported plot_type '{plot_type}'. Use 'scatter', 'boxplot', 'barplot', 'histogram', or 'pairplot'.")
+        
         return plot_data
-
     except FileNotFoundError:
         raise FileNotFoundError(f"The file {data_path} was not found.")
     except ValueError as e:
         raise ValueError(f"Plot data generation error: {e}")
     except Exception as e:
         raise Exception(f"Unexpected error during plot data generation: {e}")
+
+def generate_confusion_matrix_data(y_true, y_pred, mapping_path='models/categorical_mapping.pkl'):
+    """Generate confusion matrix data for plotting."""
+    try:
+        with open(mapping_path, 'rb') as f:
+            categorical_mapping = joblib.load(f)
+        grade_mapping = categorical_mapping['GRADE']
+        labels = [grade_mapping[i] for i in sorted(grade_mapping.keys())]
+        
+        cm = confusion_matrix(y_true, y_pred)
+        
+        return {
+            'type': 'confusion_matrix',
+            'confusion_matrix': cm.tolist(),
+            'labels': labels
+        }
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Mapping file {mapping_path} not found")
+    except Exception as e:
+        raise Exception(f"Error generating confusion matrix data: {e}")
