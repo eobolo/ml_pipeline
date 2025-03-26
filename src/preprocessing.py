@@ -19,16 +19,14 @@ target_col = 'GRADE'
 num_classes = 8
 columns_to_drop = ['STUDENTID', 'EXP_GPA']
 
-def preprocess_train_data(train_path, scaler_path='models/scaler.pkl', save_dir='models', val_size=0.2):
-    """Preprocess training data: apply SMOTE, split into train/val with stratification, fit scaler, and save it."""
+def preprocess_train_data(train_path, scaler_path='models/scaler.pkl', modes_path='models/modes.pkl', save_dir='models', val_size=0.2):
+    """Preprocess training data: handle missing values, apply SMOTE, split into train/val with stratification, fit scaler, and save it."""
     try:
         # Load training data
         train_data = pd.read_csv(train_path)
         expected_columns = all_feature_names + [target_col]
         if list(train_data.columns) != expected_columns:
             raise ValueError(f"Training data must have columns: {expected_columns}")
-        if train_data.isnull().any().any():
-            raise ValueError("Training data contains missing values")
 
         # Drop unnecessary columns
         train_data = train_data.drop(columns=columns_to_drop)
@@ -36,8 +34,28 @@ def preprocess_train_data(train_path, scaler_path='models/scaler.pkl', save_dir=
         # Separate features and target
         X = train_data.drop(columns=[target_col])
         y = train_data[target_col]
+
+        # Remove rows where target is missing
+        mask = ~y.isnull()
+        X = X[mask]
+        y = y[mask]
+        if y.empty:
+            raise ValueError("No valid rows remain after removing missing target values")
+
         if not set(y).issubset(set(range(num_classes))):
             raise ValueError(f"Target must contain only integers from 0 to {num_classes-1}")
+
+        # Impute missing values in features with mode
+        modes = {}
+        for col in X.columns:
+            mode_val = X[col].mode()[0]  # Take the first mode if multiple exist
+            modes[col] = mode_val
+        X = X.fillna(modes)
+
+        # Save the modes for test data preprocessing
+        os.makedirs(save_dir, exist_ok=True)
+        joblib.dump(modes, modes_path)
+        print(f"Imputation modes saved to {modes_path}")
 
         # Check for class imbalance and apply SMOTE
         class_counts = y.value_counts()
@@ -74,7 +92,6 @@ def preprocess_train_data(train_path, scaler_path='models/scaler.pkl', save_dir=
         y_val_onehot = to_categorical(y_val, num_classes=num_classes)
 
         # Save the scaler
-        os.makedirs(save_dir, exist_ok=True)
         joblib.dump(scaler, scaler_path)
         print(f"Scaler saved to {scaler_path}")
 
@@ -83,22 +100,22 @@ def preprocess_train_data(train_path, scaler_path='models/scaler.pkl', save_dir=
     except Exception as e:
         raise Exception(f"Error in preprocessing training data: {e}")
 
-def preprocess_test_data(test_path, scaler_path='models/scaler.pkl'):
-    """Preprocess test data using the saved scaler."""
+def preprocess_test_data(test_path, scaler_path='models/scaler.pkl', modes_path='models/modes.pkl'):
+    """Preprocess test data using the saved scaler and imputation modes."""
     try:
-        # Load the scaler
+        # Load the scaler and modes
         if not os.path.exists(scaler_path):
             raise FileNotFoundError(f"Scaler not found at {scaler_path}. Please run preprocess_train_data first.")
-        with open(scaler_path, 'rb') as f:
-            scaler = joblib.load(f)
+        if not os.path.exists(modes_path):
+            raise FileNotFoundError(f"Modes not found at {modes_path}. Please run preprocess_train_data first.")
+        scaler = joblib.load(scaler_path)
+        modes = joblib.load(modes_path)
 
         # Load test data
         test_data = pd.read_csv(test_path)
         expected_columns = all_feature_names + [target_col]
         if list(test_data.columns) != expected_columns:
             raise ValueError(f"Test data must have columns: {expected_columns}")
-        if test_data.isnull().any().any():
-            raise ValueError("Test data contains missing values")
 
         # Drop unnecessary columns
         test_data = test_data.drop(columns=columns_to_drop)
@@ -106,8 +123,19 @@ def preprocess_test_data(test_path, scaler_path='models/scaler.pkl'):
         # Separate features and target
         X_test = test_data.drop(columns=[target_col])
         y_test = test_data[target_col]
+
+        # Remove rows where target is missing
+        mask = ~y_test.isnull()
+        X_test = X_test[mask]
+        y_test = y_test[mask]
+        if y_test.empty:
+            raise ValueError("No valid rows remain after removing missing target values")
+
         if not set(y_test).issubset(set(range(num_classes))):
             raise ValueError(f"Target must contain only integers from 0 to {num_classes-1}")
+
+        # Impute missing values in features with modes from training data
+        X_test = X_test.fillna(modes)
 
         # Scale and clip features
         X_test_scaled = scaler.transform(X_test)
@@ -134,10 +162,13 @@ def merge_and_split_data(new_data_path, train_path='data/train/train.csv', test_
         
         if list(new_data.columns) != expected_columns:
             raise ValueError(f"Uploaded data must have columns: {expected_columns}")
-        if new_data.isnull().any().any():
-            raise ValueError("Uploaded data contains missing values")
         if new_data.empty:
             raise ValueError("Uploaded data contains no rows")
+
+        # Remove rows where target is missing
+        new_data = new_data.dropna(subset=[target_col])
+        if new_data.empty:
+            raise ValueError("No valid rows remain after removing missing target values")
 
         # Split new data with stratification
         X_new = new_data.drop(columns=[target_col])
