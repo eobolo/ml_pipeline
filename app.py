@@ -5,7 +5,7 @@ from src.api.routes import router
 import uvicorn
 import os
 
-app = FastAPI(title="Student Grade Prediction API")
+app = FastAPI(title="pipeline-app", version="0.1")
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
