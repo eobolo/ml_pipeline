@@ -62,6 +62,7 @@ jupyterlab_server==2.27.3
 jupyterlab_widgets==3.0.13
 keras==3.9.0
 libclang==18.1.1
+locust
 Markdown==3.7
 markdown-it-py==3.0.0
 MarkupSafe==3.0.2
@@ -100,6 +101,7 @@ Pygments==2.19.1
 pymongo==4.11.2
 pyparsing==3.2.1
 python-dateutil==2.9.0.post0
+python-dotenv
 python-json-logger==3.3.0
 python-multipart==0.0.20
 pytz==2025.1
