@@ -139,10 +139,51 @@ The application will be available at `http://localhost:5000`
 - ROC-AUC
 - Confusion Matrix
 
+## Load Testing with Locust
+I conducted load testing on my model's `/api/predict` endpoint using Locust to evaluate its performance under stress. The test simulated 30 concurrent users sending requests to a single Docker container deployment.
 
-## Future Improvements
-- [ ] Implement Locust for load testing and performance benchmarking
+### Running Locust Tests
+To run the load tests locally:
+```bash
+locust -f locust_latency.py --host=https://ml-pipeline-le2q.onrender.com
+```
+
+### Test Results and Analysis
+
+#### Key Performance Metrics
+- Total Requests: 169
+- Failures: 4 (2.37% failure rate)
+- Median Response Time: 44,000 ms (44 seconds)
+- Average Response Time: 41,785 ms (42 seconds)
+- Minimum Response Time: 1,806 ms (1.8 seconds)
+- Maximum Response Time: 67,773 ms (68 seconds)
+- Requests per Second (RPS): 0.4
+
+#### Detailed Observations
+
+##### Latency and Response Times
+![Locust Test Results](locustgraph.png)
+*Figure 1: Response time distribution and RPS over time*
+
+##### Performance Metrics
+![Locust Performance Metrics](locusttable.png)
+*Figure 2: Detailed performance statistics from load testing*
+
+- The median response time of 44 seconds indicates that half of all requests took at least this long to process
+- While some requests were handled quickly (minimum 1.8 seconds), others experienced severe delays (up to 68 seconds)
+- Response times remained consistently high throughout the test, with the 95th percentile fluctuating between 40-60 seconds
+- The system struggled to maintain consistent throughput, averaging only 0.4 RPS
+- Initial failure spike at test start, but stabilized later
+- System showed signs of being overwhelmed with 30 concurrent users
+- Response times remained high throughout the test duration
+
+#### Conclusions
+The single-container deployment showed significant performance limitations:
+- High latency (44s median, 42s average) indicates processing bottlenecks
+- Low throughput (0.4 RPS) suggests the container couldn't handle the load
+- 2.37% failure rate indicates reliability issues, especially during initial load
+- These results suggest the need for container scaling or performance optimization
 
 ## Acknowledgments
-- Dataset source: [Your Dataset Source]
+- Dataset source: [Higher Education Students Performance Evaluation](https://www.kaggle.com/datasets/csafrit2/higher-education-students-performance-evaluation?select=student_prediction.csv)
 - Special thanks to [Your Acknowledgments]
