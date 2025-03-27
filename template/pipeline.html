@@ -1,21 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Grade Prediction</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="/static/css/styles.css">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <link type="image/x-icon" rel="shortcut icon" href="https://cdn.prod.website-files.com/678cf6b9ec8afcb96a1835c0/67a2a85fd97f009fdeea8bec_Emmanuel%20Logo.svg">
+    <link type="image/x-icon" rel="shortcut icon"
+        href="https://cdn.prod.website-files.com/678cf6b9ec8afcb96a1835c0/67a2a85fd97f009fdeea8bec_Emmanuel%20Logo.svg">
 </head>
+
 <body>
     <div class="container">
         <div class="header">
             <h1>Higher Education Performance System</h1>
             <p class="subtitle">Analyze student performance and predict grades</p>
         </div>
-        
+
         <div class="card">
             <div class="card-header">
                 <div class="card-icon">📤</div>
@@ -45,7 +49,7 @@
                 <div id="prediction-result" class="result"></div>
             </div>
         </div>
-        
+
         <div class="card">
             <div class="card-header">
                 <div class="card-icon">📊</div>
@@ -55,11 +59,11 @@
                 <div id="default-visualizations" class="visualizations-container"></div>
             </div>
         </div>
-        
+
         <div class="card">
             <div class="card-header">
                 <div class="card-icon">📈</div>
-                <h2>Custom Visualization</h2>
+                <h2>Custom Visualizations</h2>
             </div>
             <div class="card-content">
                 <form id="custom-visualization-form" class="visualization-form">
@@ -76,14 +80,19 @@
                         </div>
                         <div class="form-group">
                             <label for="features">Features (comma-separated, optional):</label>
-                            <input type="text" id="features" class="form-control" placeholder="e.g., Weekly Study Hours, Output Grade">
+                            <input type="text" id="features" class="form-control"
+                                placeholder="e.g., Weekly Study Hours, Output Grade">
                         </div>
                     </div>
                     <div class="button-group">
                         <button type="button" id="generate-custom-plot" class="primary-button">Generate Plot</button>
                     </div>
                 </form>
-                <div id="custom-visualization" class="visualization-result"></div>
+                <div id="available-columns" class="result hidden">
+                    <h4>Available Columns</h4>
+                    <div class="columns-grid"></div>
+                </div>
+                <div id="custom-visualizations-container" class="visualizations-container"></div>
             </div>
         </div>
 
@@ -93,6 +102,10 @@
                 <h2>Model Management</h2>
             </div>
             <div class="card-content">
+                <div>
+                    <p class="save-label">Note after retraining the model, you must save or revert the changes.</p>
+                    <p class="save-label">clicking slider before applying confirms saving and vice versa</p>
+                </div>
                 <div class="button-group">
                     <button type="button" id="retrain-button" class="secondary-button">Retrain Model</button>
                     <button type="button" id="evaluate-button" class="secondary-button">Evaluate Model</button>
@@ -101,7 +114,7 @@
                 <div id="evaluation-result" class="result"></div>
                 <div class="save-model-container">
                     <div class="save-options">
-                        <label for="save-retrain" class="save-label">Save Retrained Model:</label>
+                        <label for="save-retrain" class="save-label">Save or revert Retrained Model:</label>
                         <label class="switch">
                             <input type="checkbox" id="save-retrain">
                             <span class="slider"></span>
@@ -113,7 +126,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Progress Overlay -->
     <div id="progress-overlay" class="progress-overlay hidden">
         <div class="progress-card">
@@ -124,10 +137,11 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Snackbar for notifications -->
     <div id="snackbar"></div>
-    
+
     <script src="/static/js/scripts.js"></script>
 </body>
+
 </html>

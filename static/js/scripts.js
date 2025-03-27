@@ -1,10 +1,10 @@
-
 document.addEventListener("DOMContentLoaded", () => {
     const featuresContainer = document.getElementById("features-container");
     const predictButton = document.getElementById("predict-button");
     const predictionResult = document.getElementById("prediction-result");
     const defaultVisualizations = document.getElementById("default-visualizations");
-    const customVisualization = document.getElementById("custom-visualization");
+    const customVisualizationsContainer = document.getElementById("custom-visualizations-container");
+    const availableColumnsContainer = document.getElementById("available-columns");
     const generateCustomPlotButton = document.getElementById("generate-custom-plot");
     const uploadButton = document.getElementById("upload-button");
     const uploadResult = document.getElementById("upload-result");
@@ -14,6 +14,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const retrainResult = document.getElementById("retrain-result");
     const evaluationResult = document.getElementById("evaluation-result");
     const saveRetrainResult = document.getElementById("save-retrain-result");
+
+    // Maintain a counter for custom visualization IDs
+    let customPlotCounter = 0;
+
+    // Store available column names
+    let availableColumns = [];
 
     // Add a snackbar element for notifications
     if (!document.getElementById("snackbar")) {
@@ -34,6 +40,55 @@ document.addEventListener("DOMContentLoaded", () => {
         'AA': { color: '#999999', marker: 'hexagon' }
     };
 
+    // Mapping of technical column names to user-friendly English names
+    const columnNameMapping = {
+        'AGE': 'Student Age',
+        'GENDER': 'Gender',
+        'HS_TYPE': 'High School Type',
+        'SCHOLARSHIP': 'Scholarship Type',
+        'WORK': 'Additional Work',
+        'ACTIVITY': 'Artistic/Sports Activity',
+        'PARTNER': 'Has Partner',
+        'SALARY': 'Total Salary',
+        'TRANSPORT': 'Transportation Method',
+        'LIVING': 'Accommodation Type',
+        'MOTHER_EDU': "Mother's Education",
+        'FATHER_EDU': "Father's Education",
+        '#_SIBLINGS': 'Number of Siblings',
+        'KIDS': 'Parental Status',
+        'MOTHER_JOB': "Mother's Occupation",
+        'FATHER_JOB': "Father's Occupation",
+        'STUDY_HRS': 'Weekly Study Hours',
+        'READ_FREQ': 'Reading Frequency (Non-Scientific)',
+        'READ_FREQ_SCI': 'Reading Frequency (Scientific)',
+        'ATTEND_DEPT': 'Seminar/Conference Attendance',
+        'IMPACT': 'Project Impact',
+        'ATTEND': 'Class Attendance',
+        'PREP_STUDY': 'Midterm Exam 1 Preparation',
+        'PREP_EXAM': 'Midterm Exam 2 Preparation',
+        'NOTES': 'Taking Notes in Classes',
+        'LISTENS': 'Listening in Classes',
+        'LIKES_DISCUSS': 'Discussion Impact',
+        'CLASSROOM': 'Flip-Classroom Preference',
+        'CUML_GPA': 'Cumulative GPA',
+        'EXP_GPA': 'Expected Graduation GPA',
+        'COURSE ID': 'Course Identifier',
+        'GRADE': 'Output Grade'
+    };
+
+    // Create reverse mapping for lookup
+    const reverseColumnMapping = {};
+    Object.entries(columnNameMapping).forEach(([technical, friendly]) => {
+        reverseColumnMapping[friendly.toLowerCase()] = technical;
+        // Also add technical name to lookup for convenience
+        reverseColumnMapping[technical.toLowerCase()] = technical;
+    });
+
+    // Initialize available columns
+    Object.values(columnNameMapping).forEach(column => {
+        availableColumns.push(column);
+    });
+
     // Show a notification
     function showNotification(message, isSuccess = true) {
         const snackbar = document.getElementById("snackbar");
@@ -51,24 +106,24 @@ document.addEventListener("DOMContentLoaded", () => {
             const overlay = document.createElement("div");
             overlay.id = "progress-overlay";
             overlay.className = "progress-overlay";
-            
+
             const card = document.createElement("div");
             card.className = "progress-card";
-            
+
             const spinner = document.createElement("div");
             spinner.className = "spinner";
-            
+
             const messageEl = document.createElement("p");
             messageEl.className = "progress-message";
             messageEl.id = "progress-message";
             messageEl.textContent = message;
-            
+
             const barContainer = document.createElement("div");
             barContainer.className = "progress-bar-container";
-            
+
             const bar = document.createElement("div");
             bar.className = "progress-bar";
-            
+
             barContainer.appendChild(bar);
             card.appendChild(spinner);
             card.appendChild(messageEl);
@@ -90,11 +145,41 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // Display available columns in a grid
+    function displayAvailableColumns() {
+        const columnsGrid = availableColumnsContainer.querySelector('.columns-grid');
+        columnsGrid.innerHTML = '';
+
+        availableColumns.sort().forEach(column => {
+            const columnChip = document.createElement('div');
+            columnChip.className = 'column-chip';
+            columnChip.textContent = column;
+            columnChip.addEventListener('click', () => {
+                // When clicked, add this column to the input
+                const featuresInput = document.getElementById('features');
+                const currentValue = featuresInput.value.trim();
+
+                if (currentValue) {
+                    featuresInput.value = `${currentValue}, ${column}`;
+                } else {
+                    featuresInput.value = column;
+                }
+
+                // Hide the columns container
+                availableColumnsContainer.classList.add('hidden');
+            });
+
+            columnsGrid.appendChild(columnChip);
+        });
+
+        availableColumnsContainer.classList.remove('hidden');
+    }
+
     // Function to fetch and populate features
     function loadFeatures() {
         featuresContainer.innerHTML = ""; // Clear existing features
         showLoading("Loading features...");
-        
+
         fetch("/api/features")
             .then(response => {
                 if (!response.ok) {
@@ -141,7 +226,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function loadDefaultVisualizations() {
         defaultVisualizations.innerHTML = ""; // Clear existing visualizations
         showLoading("Loading visualizations...");
-        
+
         fetch("/api/visualizations/default")
             .then(response => {
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
@@ -151,23 +236,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 visualizations.forEach((vis, index) => {
                     const visItem = document.createElement("div");
                     visItem.className = "visualization-item";
-                    
+
                     const title = document.createElement("h3");
                     title.textContent = vis.title;
                     visItem.appendChild(title);
-                    
+
                     const plotContainer = document.createElement("div");
                     plotContainer.className = "plot-container";
                     plotContainer.id = `default-plot-${index}`;
                     visItem.appendChild(plotContainer);
-                    
+
                     const interpretation = document.createElement("p");
                     interpretation.textContent = vis.interpretation;
                     visItem.appendChild(interpretation);
-                    
+
                     defaultVisualizations.appendChild(visItem);
                 });
-                
+
                 // Add a small delay to ensure the DOM is updated
                 setTimeout(() => {
                     visualizations.forEach((vis, index) => {
@@ -188,10 +273,10 @@ document.addEventListener("DOMContentLoaded", () => {
     function enhanceUploadForm() {
         const uploadForm = document.getElementById("upload-form");
         const fileInput = document.getElementById("file-upload");
-        
+
         // Hide the original file input
         fileInput.style.display = "none";
-        
+
         // Create a nicer upload area
         const uploadArea = document.createElement("div");
         uploadArea.className = "upload-area";
@@ -199,35 +284,35 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="upload-icon">📤</div>
             <p class="upload-text">Drag & drop your CSV file here or <span class="browse-text">browse</span></p>
         `;
-        
+
         uploadArea.addEventListener("click", () => {
             fileInput.click();
         });
-        
+
         // Add drag and drop functionality
         uploadArea.addEventListener("dragover", (e) => {
             e.preventDefault();
             uploadArea.style.borderColor = "#3498db";
             uploadArea.style.background = "#e6f7ff";
         });
-        
+
         uploadArea.addEventListener("dragleave", () => {
             uploadArea.style.borderColor = "#cbd5e0";
             uploadArea.style.background = "#f9fafc";
         });
-        
+
         uploadArea.addEventListener("drop", (e) => {
             e.preventDefault();
             uploadArea.style.borderColor = "#cbd5e0";
             uploadArea.style.background = "#f9fafc";
-            
+
             if (e.dataTransfer.files.length) {
                 fileInput.files = e.dataTransfer.files;
                 const fileName = e.dataTransfer.files[0].name;
                 uploadArea.querySelector(".upload-text").textContent = `Selected: ${fileName}`;
             }
         });
-        
+
         // Update text when file is selected
         fileInput.addEventListener("change", () => {
             if (fileInput.files.length) {
@@ -235,9 +320,58 @@ document.addEventListener("DOMContentLoaded", () => {
                 uploadArea.querySelector(".upload-text").textContent = `Selected: ${fileName}`;
             }
         });
-        
+
         // Insert the new upload area before the upload button
         uploadForm.insertBefore(uploadArea, uploadButton);
+    }
+
+    // Create a new custom visualization container
+    function createCustomVisualizationItem(plotData, plotType, features) {
+        customPlotCounter++;
+        const plotId = `custom-plot-${customPlotCounter}`;
+
+        const visItem = document.createElement("div");
+        visItem.className = "visualization-item";
+        visItem.dataset.id = plotId;
+
+        // Create visualization header with title and remove button
+        const visHeader = document.createElement("div");
+        visHeader.className = "visualization-header";
+
+        let title;
+        if (plotType === "scatter" || plotType === "pairplot") {
+            title = `${plotType.charAt(0).toUpperCase() + plotType.slice(1)} Plot: ${features.join(" vs ")}`;
+        } else {
+            title = `${plotType.charAt(0).toUpperCase() + plotType.slice(1)} Plot: ${features.join(", ")}`;
+        }
+
+        const titleEl = document.createElement("h3");
+        titleEl.textContent = title;
+
+        const removeButton = document.createElement("button");
+        removeButton.className = "remove-visualization-btn";
+        removeButton.innerHTML = "×";
+        removeButton.title = "Remove visualization";
+        removeButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            visItem.remove();
+            showNotification("Visualization removed");
+        });
+
+        visHeader.appendChild(titleEl);
+        visHeader.appendChild(removeButton);
+        visItem.appendChild(visHeader);
+
+        // Create plot container
+        const plotContainer = document.createElement("div");
+        plotContainer.className = "plot-container";
+        plotContainer.id = plotId;
+        visItem.appendChild(plotContainer);
+
+        // Add to visualizations container
+        customVisualizationsContainer.appendChild(visItem);
+
+        return { plotId, visItem };
     }
 
     // Initial load
@@ -249,7 +383,7 @@ document.addEventListener("DOMContentLoaded", () => {
     predictButton.addEventListener("click", () => {
         const features = Array.from(document.querySelectorAll("#features-container select")).map(select => parseInt(select.value));
         showLoading("Predicting grade...");
-        
+
         fetch("/api/predict", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -305,7 +439,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Refresh features and visualizations after upload
                 loadFeatures();
                 setTimeout(() => loadDefaultVisualizations(), 500);
-                customVisualization.innerHTML = ""; // Clear custom visualization
+                customVisualizationsContainer.innerHTML = ""; // Clear custom visualizations
+                customPlotCounter = 0; // Reset counter
                 hideLoading();
                 showNotification("File uploaded successfully!");
             })
@@ -315,6 +450,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 hideLoading();
                 showNotification("Error uploading file.", false);
             });
+    });
+
+    // Feature input help - show available columns when clicked
+    document.getElementById("features").addEventListener("focus", () => {
+        displayAvailableColumns();
+    });
+
+    // Hide available columns when clicking outside
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest("#features") &&
+            !e.target.closest("#available-columns") &&
+            !availableColumnsContainer.classList.contains("hidden")) {
+            availableColumnsContainer.classList.add("hidden");
+        }
     });
 
     // Handle custom visualization
@@ -337,6 +486,18 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
+        // Validate feature names against available columns
+        const invalidFeatures = features.filter(feature => {
+            return !availableColumns.some(col => col.toLowerCase() === feature.toLowerCase()) &&
+                !Object.keys(reverseColumnMapping).includes(feature.toLowerCase());
+        });
+
+        if (invalidFeatures.length > 0) {
+            showNotification(`Invalid feature name(s): ${invalidFeatures.join(", ")}`, false);
+            displayAvailableColumns();
+            return;
+        }
+
         showLoading("Generating visualization...");
         fetch("/api/visualizations/custom", {
             method: "POST",
@@ -348,24 +509,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 return response.json();
             })
             .then(data => {
-                customVisualization.innerHTML = "";
-                const plotContainer = document.createElement("div");
-                plotContainer.className = "plot-container";
-                plotContainer.id = "custom-plot";
-                customVisualization.appendChild(plotContainer);
-                
+                // Create a new visualization container instead of clearing the existing one
+                const { plotId } = createCustomVisualizationItem(data.plot_data, plotType, features);
+
                 // Ensure the container is in the DOM before rendering
                 setTimeout(() => {
-                    renderPlot(data.plot_data, plotContainer.id);
+                    renderPlot(data.plot_data, plotId);
                     hideLoading();
                     showNotification("Visualization generated successfully!");
                 }, 100);
             })
             .catch(error => {
                 console.error("Error generating custom visualization:", error);
-                customVisualization.innerHTML = "<p class='error'>Error generating visualization. Check your inputs.</p>";
+
+                // Show detailed error information with available columns
+                showNotification("Error generating visualization. Check your inputs.", false);
+                displayAvailableColumns();
+
                 hideLoading();
-                showNotification("Error generating visualization.", false);
             });
     });
 
@@ -373,8 +534,8 @@ document.addEventListener("DOMContentLoaded", () => {
     retrainButton.addEventListener("click", () => {
         showLoading("Retraining model...");
         retrainResult.innerHTML = "<p>Retraining model...</p>";
-        
-        fetch("/api/retrain", { 
+
+        fetch("/api/retrain", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({}) // Send empty JSON object instead of undefined
@@ -389,7 +550,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Create model comparison cards
                 const comparison = document.createElement("div");
                 comparison.className = "model-comparison";
-                
+
                 // Old model card
                 const oldCard = document.createElement("div");
                 oldCard.className = "model-card";
@@ -397,7 +558,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="model-title">Original Model</div>
                     <div class="model-metrics">${formatMetrics(data.old_metrics || {})}</div>
                 `;
-                
+
                 // New model card
                 const newCard = document.createElement("div");
                 newCard.className = "model-card";
@@ -405,13 +566,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="model-title">Retrained Model</div>
                     <div class="model-metrics">${formatMetrics(data.new_metrics || {})}</div>
                 `;
-                
+
                 comparison.appendChild(oldCard);
                 comparison.appendChild(newCard);
-                
+
                 retrainResult.innerHTML = `<p>${data.message}</p>`;
                 retrainResult.appendChild(comparison);
-                
+
                 hideLoading();
                 showNotification("Model retrained successfully!");
             })
@@ -426,7 +587,7 @@ document.addEventListener("DOMContentLoaded", () => {
     evaluateButton.addEventListener("click", () => {
         showLoading("Evaluating model...");
         evaluationResult.innerHTML = "<p>Evaluating model...</p>";
-        
+
         fetch("/api/evaluate")
             .then(response => {
                 if (!response.ok) {
@@ -436,16 +597,16 @@ document.addEventListener("DOMContentLoaded", () => {
             })
             .then(data => {
                 console.log("Evaluation data:", data); // Debug log
-                
+
                 // Format metrics properly
                 const formattedMetrics = formatMetrics(data.metrics || {});
-                
+
                 // If there's a classification report, format it
                 let reportHTML = '';
                 if (data.metrics && data.metrics.classification_report) {
                     reportHTML = formatClassificationReport(data.metrics.classification_report);
                 }
-                
+
                 evaluationResult.innerHTML = `
                     <div class="model-card">
                         <div class="model-title">Current Model Metrics</div>
@@ -453,19 +614,19 @@ document.addEventListener("DOMContentLoaded", () => {
                         ${reportHTML}
                     </div>
                 `;
-                
+
                 if (data.confusion_matrix) {
                     const plotContainer = document.createElement("div");
                     plotContainer.className = "plot-container";
                     plotContainer.id = "confusion-matrix-plot";
                     evaluationResult.appendChild(plotContainer);
-                    
+
                     // Ensure the container is in the DOM before rendering
                     setTimeout(() => {
                         renderPlot(data.confusion_matrix, plotContainer.id);
                     }, 100);
                 }
-                
+
                 hideLoading();
                 showNotification("Model evaluated successfully!");
             })
@@ -481,7 +642,7 @@ document.addEventListener("DOMContentLoaded", () => {
     saveRetrainButton.addEventListener("click", () => {
         const save = document.getElementById("save-retrain").checked;
         showLoading("Saving model settings...");
-        
+
         fetch("/api/save_retrain", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -510,18 +671,18 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!metrics || Object.keys(metrics).length === 0) {
             return "<p>No metrics available</p>";
         }
-        
+
         let html = "<ul style='list-style: none; padding: 0;'>";
-        
+
         Object.entries(metrics).forEach(([key, value]) => {
             // Skip the classification_report object, we'll handle it separately
             if (key === 'classification_report') return;
-            
+
             // Format the key for display
             const formattedKey = key
                 .replace(/_/g, ' ')
                 .replace(/\b\w/g, l => l.toUpperCase());
-            
+
             // Format the value based on its type
             let formattedValue = value;
             if (typeof value === 'number') {
@@ -529,10 +690,10 @@ document.addEventListener("DOMContentLoaded", () => {
             } else if (value === undefined || value === null) {
                 formattedValue = 'N/A';
             }
-            
+
             html += `<li><strong>${formattedKey}:</strong> ${formattedValue}</li>`;
         });
-        
+
         html += "</ul>";
         return html;
     }
@@ -542,7 +703,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!report || typeof report !== 'object') {
             return '';
         }
-        
+
         let html = `
             <div class="classification-report">
                 <h4>Classification Report</h4>
@@ -558,7 +719,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     </thead>
                     <tbody>
         `;
-        
+
+        // Add rows for each class
         Object.entries(report).forEach(([className, metrics]) => {
             // Skip non-class entries or invalid metrics
             console.log(metrics, className);
@@ -592,7 +754,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 </table>
             </div>
         `;
-        
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
         return html;
     }
 
@@ -629,7 +797,7 @@ document.addEventListener("DOMContentLoaded", () => {
             },
             annotations: []
         };
-        
+
         if (plotData.type === "confusion_matrix") {
             const trace = {
                 z: plotData.confusion_matrix,

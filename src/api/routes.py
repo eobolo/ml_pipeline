@@ -226,6 +226,7 @@ async def retrain():
             shutil.copy(model_path, backup_path)
             X_test_scaled_old, y_test_onehot_old = preprocess_test_data(temp_test_path)
             old_metrics = evaluate_model(X_test_scaled_old, y_test_onehot_old)
+            old_metrics = {key: value for key, value in old_metrics.items() if key not in ['y_true', 'y_pred']}
 
         # Get train data
         train_data, _ = get_data_source()
@@ -241,6 +242,7 @@ async def retrain():
 
         X_test_scaled_new, y_test_onehot_new = preprocess_test_data(temp_test_path)
         new_metrics = evaluate_model(X_test_scaled_new, y_test_onehot_new)
+        new_metrics = {key: value for key, value in new_metrics.items() if key not in ['y_true', 'y_pred']}
 
         os.remove(temp_train_path)
         os.remove(temp_test_path)
