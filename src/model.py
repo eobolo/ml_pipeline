@@ -42,7 +42,7 @@ def train_and_save_model(X_train, y_train, model_save_path='models/model.keras',
     except Exception as e:
         raise Exception(f"Error during training: {e}")
 
-def retrain_and_save_model(X_train, y_train, model_path='models/model.keras', epochs=50, batch_size=32, X_val=None, y_val=None):
+def retrain_and_save_model(X_train, y_train, model_path='models/model.keras', epochs=5, batch_size=32, X_val=None, y_val=None):
     """Retrain an existing model with new data (transfer learning) and save it."""
     try:
         model = tf.keras.models.load_model(model_path)
