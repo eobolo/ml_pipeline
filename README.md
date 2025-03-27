@@ -3,6 +3,9 @@
 ## Overview
 This project implements a machine learning pipeline for predicting student performance in higher education. The system uses historical student data to predict academic outcomes, helping educational institutions identify students who might need additional support or intervention.
 
+## Live site
+[mlops](https://ml-pipeline-le2q.onrender.com/)
+
 ## Features
 - Data preprocessing and feature engineering pipeline
 - Machine learning model training with class imbalance handling
