@@ -5,6 +5,7 @@ This project implements a machine learning pipeline for predicting student perfo
 
 ## Live site
 [mlops](https://ml-pipeline-le2q.onrender.com/)
+[youtube-video](https://youtu.be/WEx--V41hyk)
 
 ## Features
 - Data preprocessing and feature engineering pipeline
